@@ -4,8 +4,8 @@ import sys
 
 def read_json(file):
     """
-    Files reader.
-    Read data into two file, one store D and T value, and the other store all events.
+	Read data into two file, one store D and T value, and the other store all
+	events.
 
     Parameters
     ----------
@@ -19,8 +19,8 @@ def read_json(file):
     T: int
         Numbers of purchases.
     log_dict: dict
-        keys: The oders of events.
-        Values: The information of the events.
+        key: The order of events.
+        Value: The information of the events.
     """
     with open(file) as jf:
         log_dict = {}
@@ -37,6 +37,7 @@ def read_json(file):
                 D, T = data['D'], data['T']
             else:
                 log_dict[index] = data
+                
         return int(D), int(T), log_dict
 
 class Person(object):
@@ -260,9 +261,10 @@ def build_history(data):
         The list of people objects from the data.
     """
     people_list = {}
-
+    last_order = 0
     # Iterate through the data.
     for i in data:
+        last_order = i
         if data[i]['event_type'] == 'purchase':
             if data[i]['id'] in people_list.keys():
                 people_list[data[i]['id']].add_purchase(data[i], i)
@@ -286,10 +288,10 @@ def build_history(data):
                 people_list[data[i]['id1']].delete_friend(data[i])
                 people_list[data[i]['id2']].delete_friend(data[i])
             except:
-                pass
-    return people_list
+                pass     
+    return people_list, last_order
 
-def browse_data(people_list, data, D, T):
+def browse_data(people_list, data, D, T, initial_order):
     """
     Stream the upcoming new data and begein to identify anomaly of purchases
     within D degree of social network, and T number of purchases.
@@ -321,10 +323,9 @@ def browse_data(people_list, data, D, T):
     assert D >=1, 'Please enter value >= 1 for D'
     assert T >= 2, 'Please enter value >= 2 for T'
     anomaly_list = []
-
-    people_list = people_list
-
+    
     for i in data:
+        curr = i + initial_order
         if data[i]['event_type'] == 'purchase':
             if data[i]['id'] in people_list.keys():
                 total_network = friend_network(people_list[data[i]['id']], people_list, D)
@@ -334,10 +335,10 @@ def browse_data(people_list, data, D, T):
                     anomaly = detect_anomaly(people_list, data[i], total_network, T)
                     if anomaly:
                         anomaly_list.append(anomaly)
-                people_list[data[i]['id']].add_purchase(data[i], i)
+                people_list[data[i]['id']].add_purchase(data[i], curr)
             else:
                 people_list[data[i]['id']] = Person(data[i]['id'])
-                people_list[data[i]['id']].add_purchase(data[i], i)
+                people_list[data[i]['id']].add_purchase(data[i], curr)
         elif data[i]['event_type'] == 'befriend':
             if data[i]['id1'] in people_list.keys():
                 people_list[data[i]['id1']].add_friend(data[i])
@@ -436,12 +437,12 @@ def main():
     input_stream_log = sys.argv[2]
     D, T, test_data = read_json(input_batch_log)
     _, _, test_update = read_json(input_stream_log)
-    people_list = build_history(test_data)
+    people_list, last_order = build_history(test_data)
     
     # The first arg is people_list, which can be used for further purposes,
     # for example, we want to know how many friends and how many purchases
     # certain person has.
-    _, anomaly_list = browse_data(people_list, test_update, D, T)
+    _, anomaly_list = browse_data(people_list, test_update, D, T, last_order + 1)
 
     str = '\n'.join(anomaly_list)
     with open(sys.argv[3], 'w') as result:
