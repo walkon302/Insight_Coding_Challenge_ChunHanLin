@@ -437,7 +437,11 @@ def main():
     D, T, test_data = read_json(input_batch_log)
     _, _, test_update = read_json(input_stream_log)
     people_list = build_history(test_data)
-    people_list, anomaly_list = browse_data(people_list, test_update, D, T)
+    
+    # The first arg is people_list, which can be used for further purposes,
+    # for example, we want to know how many friends and how many purchases
+    # certain person has.
+    _, anomaly_list = browse_data(people_list, test_update, D, T)
 
     str = '\n'.join(anomaly_list)
     with open(sys.argv[3], 'w') as result:
