@@ -4,9 +4,7 @@ import sys
 
 def read_json(file):
     """
-    TODO:
-	Read data from two files, one stores D and T values, and the other stores
-    all	events.
+	Reads data, stores D, T as integer, and all	events as a dictionary.
 
     Parameters
     ----------
