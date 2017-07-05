@@ -4,8 +4,9 @@ import sys
 
 def read_json(file):
     """
-	Read data into two file, one store D and T value, and the other store all
-	events.
+    TODO:
+	Read data from two files, one stores D and T values, and the other stores
+    all	events.
 
     Parameters
     ----------
@@ -17,16 +18,15 @@ def read_json(file):
     D: int
         Degree of social network.
     T: int
-        Numbers of purchases.
+        Number of purchases.
     log_dict: dict
-        key: The order of events.
-        Value: The information of the events.
+        key: An integer for the index of events.
+        Value: A dictionary for events.
     """
     with open(file) as jf:
         log_dict = {}
         D, T = 0, 0
         for index, case in enumerate(jf.read().splitlines()):
-
             # Skip if this line is empty
             if case == '':
                 continue
@@ -37,85 +37,77 @@ def read_json(file):
                 D, T = data['D'], data['T']
             else:
                 log_dict[index] = data
-                
         return int(D), int(T), log_dict
 
 class Person(object):
     """
     A Class, Person.
-    Define a person, who have ID, friends, and the history of purchase.
+    Define a person, containing ID, friends, and the history of purchase.
 
     Attributes
     ----------
     ID: str
-        Person's id
+        Person's id.
     friend: set
-        Person's total friends
+        A set of strings of ids of Person's direct friends.
     purchase: list
-        Person's hitory of purchase
+        A list of Person's hitory of purchases.
     """
     def __init__(self, ID):
         self.ID = ID
         self.friend = set()
         self.purchase = []
 
-    
-    def __str__(self):
-        return 'ID: {}, # of friend: {}, # of purchase: '.format(self.ID, len(self.friend), len(self.purchase))
-        """
-        Show the basic person information, ID, numbers of friends and purchase.
-        """
-    
     def add_friend(self, befriend_event):
         """
-        Add a new friend.
+        Add a new friend to this Person.
 
         Parameters
         ----------
         befriend_event: dict
-            keys: Event_type, timestamp, id1, and id2.
-            values: The information of befriend event.
-
+            key: A string of 'event_type', 'timestamp', 'id1', and 'id2'.
+            value: A string.
         """
         if befriend_event['id1'] == self.ID:
             self.friend.add(befriend_event['id2'])
         else:
             self.friend.add(befriend_event['id1'])
-    
+
     def delete_friend(self, unfriend_event):
         """
-        Delete an exsiting friend.
+        Delete an exsiting friend. If a friendship doesn't exist, do nothing.
 
         Parameters
         ----------
         unfriend_event: dict
-            keys: Event_type, timestamp, id1, and id1.
-            values: The information of unfriend event.
+            key: A string of 'event_type', 'timestamp', 'id1', and 'id2'.
+            value: A string.
         """
         to_delete = 0
         if befriend_event['id1'] == self.ID:
             to_delete = unfriend_event['id2']
         else:
             to_delete = unfriend_event['id1']
-            
+
         try:
             del self.friend.remove[to_delete]
         except:
             pass
-    
-    def add_purchase(self, purchase_event, order):
+
+    def add_purchase(self, purchase_event, index):
         """
-        Add a new purchase history
+        Add a new purchase history.
 
         Parameters
         ----------
         purchase_event: dict
-            keys: Event_type, timestamp, id, and amount.
-            values: The information of purchase event.
-        order: int
-            The order of purchase event in the data. The lower the earlier.
+            key: A string of 'event_type', 'timestamp', 'id', and 'amount'.
+            value: A string.
+        index: int
+            The index of purchase event in the data. The lower the earlier.
         """
-        self.purchase.append(Purchase(purchase_event['amount'], purchase_event['timestamp'], order))
+        self.purchase.append(Purchase(purchase_event['amount'],
+                                      purchase_event['timestamp'], index))
 
 class Purchase(object):
     """
@@ -123,39 +115,38 @@ class Purchase(object):
 
     Attributes
     ----------
-    amount: str
+    amount: float
         The amount of money spent of this purchase.
     timestamp: str
         The time of this purchase event. The smaller the earlier.
-    order: str
-        The order of purchase event in the data. The lower the earlier. 
+    index: int
+        The index of purchase event in the data. The lower the earlier.
     """
-    def __init__(self, amount, timestamp, order):
-        self.amount = amount
+    def __init__(self, amount, timestamp, index):
+        self.amount = float(amount)
         self.timestamp = timestamp
-        self.order = order
+        self.index = index
 
-def std(T_purchase, mean, N):
+def std(T_purchase, mean):
     """
-    Calulate the standard deviation for T numbers of purchases.
+    Calculate the standard deviation for T_purchase.
 
     Parameters
     ----------
     T_purchase: list
-        T numbers of purchases.
+        A list of Purchase.
     mean: float
         The mean of amount of purchases.
-    N: float
-        The number of T
 
     Returns
     -------
     std: float
-        The standard deviation for T numbers of purchaese.
+        The standard deviation for purchaese.
     """
     t = 0
+    N = len(T_purchase)
     for purchase in T_purchase:
-        t += (float(purchase.amount) - mean) ** 2
+        t += (purchase.amount - mean) ** 2
     t_N = t / N
     std = t_N ** 0.5
     return std
@@ -163,29 +154,29 @@ def std(T_purchase, mean, N):
 def statistic_calculation(total_network, T, people_list):
     """
     Processor and calculator for purchase events.
-    
-    Collect all the purchase events, and sort them by the order of events, and take
-    the T numbers of the sorted events to get the latest T events.
-    
+
+    Collect all the purchase events of friends in total_network, sort them by
+    the index of events, take at most T numbers of the sorted latest events, and
+    calculate mean and standard deviation.
+
     Parameters
     ----------
     total_network: set
-        The set of friends.
+        The set of ids of friends.
     T: int
         The number of purchases that we want to track.
     people_list: dict
-        keys: Person's ID
-        values: Person object.
-        The list of people objects from the data.
+        key: A string of Person's ID
+        value: A Person.
 
     Returns
     -------
-    total_pucrhase: list
-        A list of Purchase objects.
+    total_purchase: list
+        A list of Purchase.
     mean_amount: float
-        The mean of T numbers of purchases.
+        The mean of at most T latest purchases.
     std_amount: float
-        The standard deviation of T numbers of purchases.
+        The standard deviation of at most T latest purchases.
     """
     total_purchase = []
     total_amount = 0
@@ -196,69 +187,74 @@ def statistic_calculation(total_network, T, people_list):
         total_purchase.extend(p.purchase)
 
     # Only take latest T numbers of purchases.
-    total_purchase.sort(key = lambda x: x.order, reverse = True)
+    total_purchase.sort(key=lambda x: x.index, reverse=True)
     T_purchase = total_purchase[:T]
 
-    # Calculate the totla amount of money of purchases
+    # Calculate the total amount of money of purchases
     for purchase in T_purchase:
-        total_amount += float(purchase.amount)
+        total_amount += purchase.amount
 
-    # Caculate the mean and standard deviation of purchases.
-    mean_amount = total_amount/float(len(T_purchase))
-    std_amount = std(T_purchase, mean_amount, float(len(T_purchase)))
+    # Calculate the mean and standard deviation of purchases.
+    mean_amount = total_amount/len(T_purchase)
+    std_amount = std(T_purchase, mean_amount)
     return total_purchase, mean_amount, std_amount
 
 def detect_anomaly(people_list, purchase_event, total_network, T):
     """
-    Detect purchase that is 3 standard deviations higher than the avarage of within network.
+    Detect purchase that is 3 standard deviations higher than the avarage of
+    within network.
 
     Parameters
     ----------
     people_list: dict
-        keys: Person's ID
-        values: Person object.
-        The list of people objects from the data.
+        key: A string for Person's ID
+        value: A Person.
     purchase_event: dict
-        keys: Event_type, timestamp, id, and amount.
-        values: The information of purchase event.
+        key: A string of 'event_type', 'timestamp', 'id', and 'amount'.
+        value: A string.
     total_network: set
-        The set of friends.
-    T: float
+        The set of ids of friends within network.
+    T: int
         The numbers of purchases that we want to track.
 
     Returns
     -------
     anomaly: str
-        The details of flagged anomaly purchase.
+        A string for the flagged anomaly purchase.
     """
     anomaly = {}
-    total_purchase, mean_amount, std_amount = statistic_calculation(total_network, T, people_list)
+    total_purchase, mean_amount, std_amount = statistic_calculation(
+        total_network, T, people_list)
+    pattern = '{{"event_type":"purchase", "timestamp":"{}", "id": "{}", "amount": "{}", "mean": "{:.2f}", "sd": "{:.2f}"}}'
 
-    # Skip anomaly of purchases detection if the total number of purchases within social network is less than 2.
+    # Skip anomaly of purchases detection if the total number of purchases
+    # within social network is less than 2.
     if len(total_purchase) < 2:
         return anomaly
     if float(purchase_event['amount']) > (mean_amount + 3 * std_amount):
-        anomaly = '{{"event_type":"purchase", "timestamp":"{}", "id": "{}", "amount": "{}", "mean": "{:.2f}", "sd": "{:.2f}"}}'.format(purchase_event['timestamp'], purchase_event['id'], purchase_event['amount'], mean_amount, std_amount)
+        anomaly = pattern.format(purchase_event['timestamp'],
+                                 purchase_event['id'],
+                                 purchase_event['amount'],
+                                 mean_amount,
+                                 std_amount)
     return anomaly
 
 def build_history(data):
     """
-    Build the people_list, which include the information of peoson's friends 
+    Build the people_list, which include the information of Person's friends
     and history of purchases based on initial batch_log file.
 
     Parameters
     ----------
     data: dict
-        keys: The order of events.
-        values: Each event.
-        The initial data for building network of friends and history of purchases.
+        key: An integer for the index of events.
+        value: An event.
 
     Returns
     -------
     people_list: dict
-        keys: Person's ID
-        values: Person object.
-        The list of people objects from the data.
+        key: A string for Person's ID
+        value: A Person.
     """
     people_list = {}
     last_order = 0
@@ -266,90 +262,79 @@ def build_history(data):
     for i in data:
         last_order = i
         if data[i]['event_type'] == 'purchase':
-            if data[i]['id'] in people_list.keys():
-                people_list[data[i]['id']].add_purchase(data[i], i)
-            else:
+            if not data[i]['id'] in people_list.keys():
                 people_list[data[i]['id']] = Person(data[i]['id'])
-                people_list[data[i]['id']].add_purchase(data[i], i)
+            people_list[data[i]['id']].add_purchase(data[i], i)
         elif data[i]['event_type'] == 'befriend':
-            if data[i]['id1'] in people_list.keys():
-                people_list[data[i]['id1']].add_friend(data[i])
-            else:
+            if not data[i]['id1'] in people_list.keys():
                 people_list[data[i]['id1']] = Person(data[i]['id1'])
-                people_list[data[i]['id1']].add_friend(data[i])
-            if data[i]['id2'] in people_list.keys():
-                people_list[data[i]['id2']].add_friend(data[i])
-            else:
+            people_list[data[i]['id1']].add_friend(data[i])
+            if not data[i]['id2'] in people_list.keys():
                 people_list[data[i]['id2']] = Person(data[i]['id2'])
-                people_list[data[i]['id2']].add_friend(data[i])
-        else:
+            people_list[data[i]['id2']].add_friend(data[i])
+        else:  # for unfriend events
             # In case of that there are missing events of befriend.
             try:
                 people_list[data[i]['id1']].delete_friend(data[i])
                 people_list[data[i]['id2']].delete_friend(data[i])
             except:
-                pass     
+                pass
     return people_list, last_order
 
 def browse_data(people_list, data, D, T, initial_order):
     """
-    Stream the upcoming new data and begein to identify anomaly of purchases
-    within D degree of social network, and T number of purchases.
+    Stream the upcoming new data and identify anomaly of purchases within D
+    degree of social network, and at most T latest purchases.
 
     Parameters
     ----------
     people_list: dict
-        keys: Person's ID
-        values: Person object.
-        The list of people objects from the data.
+        key: A string for Person's ID
+        value: A Person.
     data: dict
-        keys: The order of events.
-        values: Each event.
-        The upcoming new data.
+        key: An integer for the index of events.
+        value: An event.
     D: int
         The number of degree in social network.
     T: int
-        The numbers of purchases that we want to track.
+        The number of purchases that we want to track.
 
     Returns
     -------
     people_list: dict
-        keys: Person's ID
-        values: Person object.
-        The list of people objects from the data.
+        key: A string for Person's ID
+        value: A Person.
     anomaly_list: list
-        The list of flagged anomaly of purchases.
+        The list of strings of flagged anomaly of purchases.
     """
     assert D >=1, 'Please enter value >= 1 for D'
     assert T >= 2, 'Please enter value >= 2 for T'
     anomaly_list = []
-    
+
     for i in data:
         curr = i + initial_order
         if data[i]['event_type'] == 'purchase':
             if data[i]['id'] in people_list.keys():
-                total_network = friend_network(people_list[data[i]['id']], people_list, D)
+                total_network = friend_network(
+                    people_list[data[i]['id']], people_list, D)
 
-                # Skip the anomaly of purchase detection if the person has no friends.
+                # Skip the anomaly of purchase detection if the person has no
+                # friends.
                 if len(total_network) >= 1:
-                    anomaly = detect_anomaly(people_list, data[i], total_network, T)
+                    anomaly = detect_anomaly(
+                        people_list, data[i], total_network, T)
                     if anomaly:
                         anomaly_list.append(anomaly)
-                people_list[data[i]['id']].add_purchase(data[i], curr)
             else:
                 people_list[data[i]['id']] = Person(data[i]['id'])
-                people_list[data[i]['id']].add_purchase(data[i], curr)
+            people_list[data[i]['id']].add_purchase(data[i], curr)
         elif data[i]['event_type'] == 'befriend':
-            if data[i]['id1'] in people_list.keys():
-                people_list[data[i]['id1']].add_friend(data[i])
-            else:
+            if not data[i]['id1'] in people_list.keys():
                 people_list[data[i]['id1']] = Person(data[i]['id1'])
-                people_list[data[i]['id1']].add_friend(data[i])
-            if data[i]['id2'] in people_list.keys():
-                people_list[data[i]['id2']].add_friend(data[i])
-            else:
+            people_list[data[i]['id1']].add_friend(data[i])
+            if not data[i]['id2'] in people_list.keys():
                 people_list[data[i]['id2']] = Person(data[i]['id2'])
-                people_list[data[i]['id2']].add_friend(data[i])
+            people_list[data[i]['id2']].add_friend(data[i])
         else:
             try:
                 people_list[data[i]['id1']].delete_friend(data[i])
@@ -360,16 +345,16 @@ def browse_data(people_list, data, D, T, initial_order):
 
 def net_friendship(person):
     """
-    Obtain the list of person's direct friends.
+    Obtain the set of person's direct friends' id.
 
     Parameters
     ----------
-    person: Person object
+    person: A Person.
 
     Returns
     -------
     network: set
-        The list of person's direct friends
+        The set of strings of ids of person's direct friends
     """
     network = []
 
@@ -380,21 +365,20 @@ def net_friendship(person):
 
 def expanding_network(network, people_list):
     """
-    Obtain the list of person's friends of friends.
+    Obtain the set of person's friends of friends' id.
 
     Parameters
     ----------
     network: set
-        The list of person's direct friends.
+        The set of strings of person's direct friends' id.
     peopls_list: dict
-        keys: Person's ID
-        values: Person object.
-        The list of people objects from the data.
+        key: A string for Person's ID
+        value: A Person.
 
     Returns
     -------
     whole_network: set
-        The list of person's friends of friends.
+        The set of person's friends of friends'id.
     """
     whole_network = set()
 
@@ -406,22 +390,21 @@ def expanding_network(network, people_list):
 
 def friend_network(person, people_list, D):
     """
-    Obtain the the list of person's friends within D degree of social networks.
+    Obtain the set of person's friends within D degree of social networks.
 
     Parameters
     ----------
-    person: Person object
+    person: A Person
     people_list: dict
-        keys: Person's ID
-        values: Person object.
-        The list of people objects from the data.
+        key: A string for Person's ID.
+        value: A Person.
     D: int
-        The number of degree in social network
+        The number of degree of social network
 
     Returns
     -------
     network: set
-        The list of person's friends within D degree of social networks.
+        The set of person's friends within D degree of social networks.
     """
     # Get the list of person's friends.
     network = net_friendship(person)
@@ -438,11 +421,12 @@ def main():
     D, T, test_data = read_json(input_batch_log)
     _, _, test_update = read_json(input_stream_log)
     people_list, last_order = build_history(test_data)
-    
+
     # The first arg is people_list, which can be used for further purposes,
     # for example, we want to know how many friends and how many purchases
     # certain person has.
-    _, anomaly_list = browse_data(people_list, test_update, D, T, last_order + 1)
+    _, anomaly_list = browse_data(
+        people_list, test_update, D, T, last_order + 1)
 
     str = '\n'.join(anomaly_list)
     with open(sys.argv[3], 'w') as result:
